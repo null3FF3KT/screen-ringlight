@@ -1,11 +1,12 @@
 # Screen Edge Ring Light
 
-A tiny Electron overlay that turns the **edges of your monitor** into a soft, warm light while leaving the center of the screen fully usable.
+A tiny Electron overlay that creates a **glowing ring around the edges of your monitor** with soft, warm light while leaving the center of the screen fully usable.
 
 - Sits **on top of all apps**
 - Is **click-through** (you can still use everything under it)
 - Supports **multiple monitors** and can move between them
 - Controlled entirely by **global shortcuts**
+- Visual debugging borders (green) to mark the light boundaries
 
 Designed to make you look better on camera without buying extra hardware.
 
@@ -13,8 +14,11 @@ Designed to make you look better on camera without buying extra hardware.
 
 ## Features
 
-- Transparent, frameless window that hugs the edges of a single monitor
-- Warm, soft edge glow that works as a pseudo ring light
+- Transparent, frameless window that covers a single monitor
+- Warm, soft ring glow around the edges using CSS inset box-shadows
+- Visual debugging with green borders (outer and inner edge of light ring)
+- Rounded corners (24px border-radius) for a polished look
+- Screen blend mode for natural lighting effect
 - Global shortcuts to:
   - Toggle the light on/off
   - Move the light to the next monitor
@@ -37,12 +41,10 @@ Designed to make you look better on camera without buying extra hardware.
 Clone the repo and install dependencies:
 
 ```bash
-git clone https://github.com/<your-username>/screen-ringlight.git
+git clone https://github.com/null3FF3KT/screen-ringlight.git
 cd screen-ringlight
 npm install
 ```
-
-> Replace `<your-username>` with your GitHub handle if you are publishing this.
 
 ---
 
@@ -51,10 +53,10 @@ npm install
 Key files in this project:
 
 - `main.js`  
-  Electron main process.  Creates the overlay window, manages displays, registers global shortcuts.
+  Electron main process. Creates the overlay window, manages displays, registers global shortcuts.
 
 - `index.html`  
-  Renders the light effect on the screen edges using CSS gradients.
+  Renders the light effect using a single ring element with CSS inset box-shadows, green debug borders, and screen blend mode.
 
 - `preload.js`  
   Preload script (currently minimal; reserved for future use).
@@ -107,7 +109,7 @@ Ctrl + Alt + Shift + M
 ```
 
 - Cycles the overlay to the next available display.
-- The overlay window is resized and repositioned to exactly match the target monitor’s bounds.
+- The overlay window is resized and repositioned to exactly match the target monitor's bounds.
 - If you only have one monitor, this shortcut does nothing.
 
 ### Quit the app
@@ -123,7 +125,7 @@ Ctrl + Alt + Shift + Q
 
 ## How display detection works
 
-The app uses Electron’s `screen` API:
+The app uses Electron's `screen` API:
 
 - On startup, it calls `screen.getAllDisplays()` and selects a display index.
 - It creates a `BrowserWindow` whose bounds match the selected display.
@@ -137,7 +139,7 @@ When any of those events fire, the app:
 1. Refreshes the display list.
 2. Repositions/resizes the overlay window to keep it aligned with the current display index.
 
-Because `index.html` uses viewport units (`vh`, `vw`), the light automatically stays on the edges of the current monitor regardless of resolution or orientation.
+Because `index.html` uses a single fixed-position ring element with inset box-shadows, the light automatically stays on the edges of the current monitor regardless of resolution or orientation.
 
 ---
 
@@ -170,7 +172,7 @@ Because `index.html` uses viewport units (`vh`, `vw`), the light automatically s
    ```
 
 4. Save and exit.  
-   The app should now appear in your application menu as “Screen Edge Ring Light”.
+   The app should now appear in your application menu as "Screen Edge Ring Light".
 
 ### Optional: start automatically on login
 
@@ -188,37 +190,52 @@ Because `index.html` uses viewport units (`vh`, `vw`), the light automatically s
 
 ## Customization
 
-Most visual behavior is controlled in `index.html`:
+Most visual behavior is controlled in `index.html` using CSS custom properties:
 
-- **Edge thickness**
+- **Ring thickness** (how far the light extends inward from edges)
 
   ```css
-  #top, #bottom {
-    height: 14vh;   /* adjust for more/less top/bottom light */
-  }
-
-  #left, #right {
-    width: 10vw;    /* adjust for more/less side light */
+  :root {
+    --ring-thickness: 80px;  /* adjust for wider/narrower light ring */
   }
   ```
 
-- **Color temperature and intensity**
+- **Light color** (RGB values)
 
   ```css
-  #top {
-    background: linear-gradient(
-      to bottom,
-      rgba(255, 240, 220, 0.95),
-      rgba(255, 240, 220, 0.4),
-      rgba(0, 0, 0, 0)
-    );
+  :root {
+    --light-r: 255;
+    --light-g: 240;
+    --light-b: 220;
   }
   ```
 
-  - More “cool”: move toward `rgba(255, 255, 255, …)`
-  - More “warm”: move toward `rgba(255, 230, 200, …)`
-  - Brighter: increase the alpha (`0.95`, `0.4`, etc.)
-  - Dimmer: decrease the alpha values.
+  - More "cool": use `255, 255, 255` (pure white)
+  - More "warm": use `255, 230, 200` (warmer yellow-orange)
+
+- **Light intensity** (opacity/alpha)
+
+  ```css
+  :root {
+    --light-alpha-main: 0.9;      /* main fill opacity */
+    --light-alpha-feather: 0.3;   /* feather effect opacity */
+  }
+  ```
+
+  - Brighter: increase values (max 1.0)
+  - Dimmer: decrease values
+
+- **Border radius** (corner rounding)
+
+  ```css
+  #ring {
+    border-radius: 24px;  /* adjust for sharper/rounder corners */
+  }
+  ```
+
+- **Debug borders** (green outer and inner borders)
+
+  Remove or adjust the green borders in the `border` and `box-shadow` properties of `#ring` if you want to hide them or change their appearance.
 
 ---
 
@@ -227,7 +244,7 @@ Most visual behavior is controlled in `index.html`:
 - The app does not make network requests.
 - It does not read or log your screen contents.
 - It only draws on a transparent overlay window that ignores mouse events.
-- It uses global shortcuts via Electron’s `globalShortcut` API, which requires the app to be running but does not affect other applications beyond the chosen key combinations.
+- It uses global shortcuts via Electron's `globalShortcut` API, which requires the app to be running but does not affect other applications beyond the chosen key combinations.
 
 ---
 
