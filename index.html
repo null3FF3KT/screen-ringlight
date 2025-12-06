@@ -12,87 +12,148 @@
       background: transparent;
     }
 
-    /* We only draw on the edges, leaving the center transparent. */
-    .edge {
-      position: fixed;
-      pointer-events: none; /* Just in case – UI is click-through anyway */
-      mix-blend-mode: screen;
+    :root {
+      /* How far the light extends inward from the edges */
+      --ring-thickness: 80px;
+
+      /* Corner rounding */
+      --ring-radius: 24px;
+
+      /* Light color */
+      --light-r: 255;
+      --light-g: 240;
+      --light-b: 220;
+
+      /* Opacity */
+      --light-alpha-main: 0.9;   /* main fill */
+      --light-alpha-feather: 0.3; /* very slight feather */
     }
 
-    /* Adjust these thickness values to taste */
-    #top, #bottom {
-      left: 0;
-      right: 0;
-      height: 14vh;
-    }
-
-    #left, #right {
-      top: 0;
-      bottom: 0;
-      width: 10vw;
-    }
-
-    /* Warm-ish light color and falloff. */
-    #top {
-      top: 0;
-      background: linear-gradient(
-        to bottom,
-        rgba(255, 240, 220, 0.95),
-        rgba(255, 240, 220, 0.4),
-        rgba(0, 0, 0, 0)
-      );
-    }
-
-    #bottom {
-      bottom: 0;
-      background: linear-gradient(
-        to top,
-        rgba(255, 240, 220, 0.85),
-        rgba(255, 240, 220, 0.35),
-        rgba(0, 0, 0, 0)
-      );
-    }
-
-    #left {
-      left: 0;
-      background: linear-gradient(
-        to right,
-        rgba(255, 240, 220, 0.9),
-        rgba(255, 240, 220, 0.4),
-        rgba(0, 0, 0, 0)
-      );
-    }
-
-    #right {
-      right: 0;
-      background: linear-gradient(
-        to left,
-        rgba(255, 240, 220, 0.9),
-        rgba(255, 240, 220, 0.4),
-        rgba(0, 0, 0, 0)
-      );
-    }
-
-    /* Optional subtle center vignette for smoother falloff */
-    #center-soften {
+    #ring {
       position: fixed;
       inset: 0;
       pointer-events: none;
-      background: radial-gradient(
-        circle at 50% 30%,
-        rgba(255, 255, 255, 0.0) 0%,
-        rgba(0, 0, 0, 0.15) 70%,
-        rgba(0, 0, 0, 0.3) 100%
-      );
-      mix-blend-mode: multiply;
+      box-sizing: border-box;
+      border-radius: var(--ring-radius);
+      clip-path: inset(0 round var(--ring-radius));
+      background-clip: padding-box;
+
+      /* Outer green border at the very edge */
+      border: 3px solid rgba(0, 255, 0, 0.8);
+
+      background: transparent;
+      mix-blend-mode: screen;
+
+      /* One continuous ring created with inset box-shadows */
+      box-shadow:
+        /* Main solid light between outer & inner borders */
+        inset 0 0 0 var(--ring-thickness)
+          rgba(var(--light-r), var(--light-g), var(--light-b), var(--light-alpha-main)),
+
+        /* Inner green border at the inner edge of the light */
+        inset 0 0 0 calc(var(--ring-thickness) + 3px)
+          rgba(0, 255, 0, 0.9),
+
+        /* Slight feather near the outer edge of the light */
+        inset 0 0 12px calc(var(--ring-thickness) * 0.4)
+          rgba(var(--light-r), var(--light-g), var(--light-b), var(--light-alpha-feather));
+    }
+
+    #shortcuts {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: rgba(255, 255, 255, 0.95);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      pointer-events: none;
+      z-index: 10000;
+      display: flex;
+      gap: 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    .shortcut-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .key {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .action {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
-  <div id="top" class="edge"></div>
-  <div id="bottom" class="edge"></div>
-  <div id="left" class="edge"></div>
-  <div id="right" class="edge"></div>
-  <div id="center-soften"></div>
+  <div id="ring"></div>
+  <div id="shortcuts">
+    <div class="shortcut-item">
+      <span class="key">Ctrl+Alt+Shift+R</span>
+      <span class="action">Toggle</span>
+    </div>
+    <div class="shortcut-item">
+      <span class="key">Ctrl+Alt+Shift+M</span>
+      <span class="action">Next Monitor</span>
+    </div>
+    <div class="shortcut-item">
+      <span class="key">Ctrl+Alt+Shift+Q</span>
+      <span class="action">Quit</span>
+    </div>
+  </div>
+  <script>
+    // Adjust ring and shortcuts based on taskbar offsets sent from main
+    const minGap = 12; // small visual gap even when offsets are zero
+
+    if (window.electronAPI) {
+      window.electronAPI.onTaskbarInfo((taskbarInfo) => {
+        const ring = document.getElementById('ring');
+        const shortcuts = document.getElementById('shortcuts');
+
+        const top = Math.max(taskbarInfo.top || 0, 0);
+        const bottom = Math.max(taskbarInfo.bottom || 0, 0);
+        const left = Math.max(taskbarInfo.left || 0, 0);
+        const right = Math.max(taskbarInfo.right || 0, 0);
+
+        // Apply inset to keep the light away from taskbar area; add a minimal gap
+        ring.style.inset = `${top + minGap}px ${right + minGap}px ${bottom + minGap}px ${left + minGap}px`;
+
+        // Position shortcut pill away from taskbar
+        shortcuts.style.top = 'auto';
+        shortcuts.style.bottom = `${bottom + minGap}px`;
+        shortcuts.style.left = '50%';
+        shortcuts.style.right = 'auto';
+        shortcuts.style.transform = 'translateX(-50%)';
+
+        if (top > 0 && top >= bottom) {
+          shortcuts.style.top = `${top + minGap}px`;
+          shortcuts.style.bottom = 'auto';
+        }
+
+        if (left > 0 && left > right) {
+          shortcuts.style.left = `${left + 40}px`;
+          shortcuts.style.right = 'auto';
+          shortcuts.style.transform = 'none';
+        } else if (right > 0 && right > left) {
+          shortcuts.style.right = `${right + 40}px`;
+          shortcuts.style.left = 'auto';
+          shortcuts.style.transform = 'none';
+        }
+      });
+    }
+  </script>
 </body>
 </html>

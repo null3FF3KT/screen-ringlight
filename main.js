@@ -18,16 +18,17 @@ function createLightWindow() {
 
   const display =
     displays[currentDisplayIndex] || screen.getPrimaryDisplay();
-  const { x, y, width, height } = display.bounds;
+  const bounds = display.bounds;
+  const workArea = display.workArea;
 
   lightWindow = new BrowserWindow({
-    x,
-    y,
-    width,
-    height,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
     transparent: true,
     frame: false,
-    fullscreen: false,      // we are manually matching display bounds
+    fullscreen: false,
     alwaysOnTop: true,
     hasShadow: false,
     skipTaskbar: true,
@@ -45,6 +46,17 @@ function createLightWindow() {
   lightWindow.setIgnoreMouseEvents(true, { forward: true });
 
   lightWindow.loadFile("index.html");
+
+  // Send taskbar info to renderer after page loads
+  lightWindow.webContents.on("did-finish-load", () => {
+    const taskbarInfo = {
+      top: workArea.y - bounds.y,
+      bottom: bounds.y + bounds.height - (workArea.y + workArea.height),
+      left: workArea.x - bounds.x,
+      right: bounds.x + bounds.width - (workArea.x + workArea.width)
+    };
+    lightWindow.webContents.send("taskbar-info", taskbarInfo);
+  });
 }
 
 function moveToDisplay(index) {
@@ -55,9 +67,23 @@ function moveToDisplay(index) {
 
   currentDisplayIndex = ((index % displays.length) + displays.length) % displays.length;
   const display = displays[currentDisplayIndex];
-  const { x, y, width, height } = display.bounds;
+  const bounds = display.bounds;
+  const workArea = display.workArea;
 
-  lightWindow.setBounds({ x, y, width, height });
+  lightWindow.setBounds({
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height
+  });
+
+  const taskbarInfo = {
+    top: workArea.y - bounds.y,
+    bottom: bounds.y + bounds.height - (workArea.y + workArea.height),
+    left: workArea.x - bounds.x,
+    right: bounds.x + bounds.width - (workArea.x + workArea.width)
+  };
+  lightWindow.webContents.send("taskbar-info", taskbarInfo);
 }
 
 function moveToNextDisplay() {
